@@ -21,17 +21,22 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 using namespace vsg;
 
 Object::Object() :
-    _referenceCount(0),
-    _auxiliary(nullptr)
+#ifdef VSG_PACKED_OBJECT
+    _value{}
+#else
+    _auxiliary{nullptr},
+    _referenceCount{0}
+#endif
 {
 }
 
 Object::~Object()
 {
-    if (_auxiliary)
+    Auxiliary* auxiliary = getAuxiliary();
+    if (auxiliary)
     {
-        _auxiliary->setConnectedObject(0);
-        _auxiliary->unref();
+        auxiliary->setConnectedObject(0);
+        auxiliary->unref();
     }
 }
 
@@ -41,7 +46,8 @@ void Object::_delete() const
 
     // if there is an auxiliary attached signal to it we wish to delete, and give it an opportunity to decide whether a delete is appropriate.
     // if no auxiliary is attached then go straight ahead and delete.
-    if (_auxiliary==nullptr || _auxiliary->signalConnectedObjectToBeDeleted())
+    const Auxiliary* auxiliary = getAuxiliary();
+    if (auxiliary==nullptr || auxiliary->signalConnectedObjectToBeDeleted())
     {
         //std::cout<<"Object::_delete() "<<this<<" calling delete"<<std::endl;
 
@@ -70,17 +76,33 @@ void Object::setObject(const Key& key, Object* object)
 
 Object* Object::getObject(const Key& key)
 {
-    if (!_auxiliary) return nullptr;
-    return _auxiliary->getObject(key);
+    Auxiliary* auxiliary = getAuxiliary();
+    if (!auxiliary) return nullptr;
+    return auxiliary->getObject(key);
 }
 
 const Object* Object::getObject(const Key& key) const
 {
-    if (!_auxiliary) return nullptr;
-    return _auxiliary->getObject(key);
+    const Auxiliary* auxiliary = getAuxiliary();
+    if (!auxiliary) return nullptr;
+    return auxiliary->getObject(key);
 }
 
 
+#ifdef VSG_PACKED_OBJECT
+Auxiliary* Object::getOrCreateAuxiliary()
+{
+    vsg::Auxiliary* auxiliary = getAuxiliary();
+    if (!auxiliary)
+    {
+        auxiliary = new vsg::Auxiliary;
+        auxiliary->ref();
+        auxiliary->setConnectedObject(this);
+        _value.fetch_or(reinterpret_cast<std::uintptr_t>(auxiliary), std::memory_order_relaxed);
+    }
+    return auxiliary;
+}
+#else
 Auxiliary* Object::getOrCreateAuxiliary()
 {
     if (!_auxiliary)
@@ -91,5 +113,5 @@ Auxiliary* Object::getOrCreateAuxiliary()
     }
     return _auxiliary;
 }
-
+#endif
 

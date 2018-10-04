@@ -54,7 +54,7 @@ void Auxiliary::setConnectedObject(Object* object)
     //std::cout<<"Auxiliary::setConnectedObject("<<object<<") previous _connectedObject="<<_connectedObject<<std::endl;
 }
 
-bool Auxiliary::signalConnectedObjectToBeDeleted()
+bool Auxiliary::signalConnectedObjectToBeDeleted() const
 {
     Object* previousPtr = _connectedObject.exchange(0);
     if (previousPtr->referenceCount()>0)

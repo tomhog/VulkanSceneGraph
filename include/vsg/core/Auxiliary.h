@@ -22,7 +22,7 @@ namespace vsg
 {
 
     /** Auxiliary provides extra Object data that is rarely used, and hooks for observers.*/
-    class VSG_EXPORT Auxiliary
+    class VSG_EXPORT alignas(VSG_AUXILIARY_ALIGNMENT) Auxiliary
     {
     public:
         Auxiliary();
@@ -51,13 +51,12 @@ namespace vsg
 
         /// reset the ConnectedObject pointer to 0 unless the ConnectedObject referenceCount goes back above 0,
         /// return true if ConnectedObject should still be deleted, or false if the object should be kept.
-        bool signalConnectedObjectToBeDeleted();
+        bool signalConnectedObjectToBeDeleted() const;
 
         friend class Object;
 
         mutable std::atomic_uint _referenceCount;
-
-        std::atomic<Object*> _connectedObject;
+        mutable std::atomic<Object*> _connectedObject;
 
         ObjectMap _objectMap;
 

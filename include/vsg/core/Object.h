@@ -22,6 +22,9 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 namespace vsg
 {
 
+#define VSG_PACKED_OBJECT
+#define VSG_AUXILIARY_ALIGNMENT 8
+
     // forward declare
     class Auxiliary;
     class Visitor;
@@ -38,11 +41,17 @@ namespace vsg
         virtual void accept(DispatchTraversal& visitor) const;
         virtual void traverse(DispatchTraversal& ) const {}
 
+#ifdef VSG_PACKED_OBJECT
+        inline void ref() const noexcept { _value.fetch_add(1, std::memory_order_relaxed); }
+        inline void unref() const noexcept { if ((_value.fetch_sub(1, std::memory_order_seq_cst) & COUNT_MASK)<=1) _delete(); }
+        inline void unref_nodelete() const noexcept { _value.fetch_sub(1, std::memory_order_seq_cst); }
+        std::uintptr_t referenceCount() noexcept { return _value.load() & COUNT_MASK; }
+#else
         inline void ref() const noexcept { _referenceCount.fetch_add(1, std::memory_order_relaxed); }
         inline void unref() const noexcept { if (_referenceCount.fetch_sub(1, std::memory_order_seq_cst)<=1) _delete(); }
         inline void unref_nodelete() const noexcept { _referenceCount.fetch_sub(1, std::memory_order_seq_cst); }
         inline unsigned int referenceCount() const noexcept { return _referenceCount.load(); }
-
+#endif
         struct Key
         {
             Key(const char* in_name) : name(in_name), index(0) {}
@@ -76,18 +85,29 @@ namespace vsg
         const Object* getObject(const Key& key) const;
 
         Auxiliary* getOrCreateAuxiliary();
+#ifdef VSG_PACKED_OBJECT
+        vsg::Auxiliary* getAuxiliary() noexcept { return reinterpret_cast<vsg::Auxiliary*>(_value.load() & PTR_MASK); }
+        const vsg::Auxiliary* getAuxiliary() const noexcept { return reinterpret_cast<vsg::Auxiliary*>(_value.load() & PTR_MASK); }
+#else
         Auxiliary* getAuxiliary() { return _auxiliary; }
         const Auxiliary* getAuxiliary() const { return _auxiliary; }
+#endif
 
     protected:
         virtual ~Object();
-
-    private:
         virtual void _delete() const;
 
-        mutable std::atomic_uint _referenceCount;
+    private:
 
+#ifdef VSG_PACKED_OBJECT
+        mutable std::atomic<std::uintptr_t> _value{};
+
+        static constexpr std::uintptr_t COUNT_MASK = VSG_AUXILIARY_ALIGNMENT-1;
+        static constexpr std::uintptr_t PTR_MASK = ~COUNT_MASK;
+#else
         Auxiliary* _auxiliary;
+        mutable std::atomic_uint _referenceCount;
+#endif
     };
 
 }
