@@ -133,6 +133,15 @@ namespace vsg
     class VSG_DECLSPEC ShaderStages : public Inherit<GraphicsPipelineState, ShaderStages>
     {
     public:
+        using SpecializationEntries = std::vector<VkSpecializationMapEntry>;
+
+        struct SpecializationInfo
+        {
+            SpecializationEntries entries;
+            ref_ptr<Data> data;
+        };
+        using StageSpecializationInfos = std::map<VkShaderStageFlagBits, SpecializationInfo>;
+
         ShaderStages();
         ShaderStages(const ShaderModules& shaderModules);
 
@@ -146,6 +155,19 @@ namespace vsg
             _shaderModules = shaderModules;
         }
         const ShaderModules& getShaderModules() const { return _shaderModules; }
+
+        void setSpecializationInfo(VkShaderStageFlagBits stage, ref_ptr<Data> data, const SpecializationEntries& entries)
+        {
+            SpecializationInfo info;
+            info.entries = entries;
+            info.data = data;
+            _specializationInfos[stage] = info;
+        }
+
+        void setSpecializationInfos(const StageSpecializationInfos& infos)
+        {
+            _specializationInfos = infos;
+        }
 
         std::size_t size() const { return _stages.size(); }
 
@@ -167,6 +189,8 @@ namespace vsg
 
         using Stages = std::vector<VkPipelineShaderStageCreateInfo>;
         Stages _stages;
+
+        StageSpecializationInfos _specializationInfos;
     };
     VSG_type_name(vsg::ShaderStages);
 

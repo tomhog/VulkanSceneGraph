@@ -200,6 +200,26 @@ void ShaderStages::read(Input& input)
     {
         shaderModule = input.readObject<ShaderModule>("ShaderModule");
     }
+
+    _specializationInfos.clear();
+
+    uint32_t numSpecialStages = input.readValue<uint32_t>("NumSpecializationStages");
+
+    for (uint32_t i = 0; i < numSpecialStages; i++)
+    {
+        VkShaderStageFlagBits stage = static_cast<VkShaderStageFlagBits>(input.readValue<uint32_t>("specializationStageType"));
+
+        SpecializationInfo& specialInfo = _specializationInfos[stage];
+        specialInfo.entries.resize(input.readValue<uint32_t>("NumSpecializationEntries"));
+        for (auto& entry : specialInfo.entries)
+        {
+            input.read("constantID", entry.constantID);
+            input.read("offset", entry.offset);
+            entry.size = static_cast<size_t>(input.readValue<uint32_t>("size"));
+        }
+
+        specialInfo.data = input.readObject<Data>("SpecializationData");
+    }
 }
 
 void ShaderStages::write(Output& output) const
@@ -210,6 +230,25 @@ void ShaderStages::write(Output& output) const
     for (auto& shaderModule : _shaderModules)
     {
         output.writeObject("ShaderModule", shaderModule.get());
+    }
+
+    output.writeValue<uint32_t>("NumSpecializationStages", _specializationInfos.size());
+
+    for (StageSpecializationInfos::const_iterator it = _specializationInfos.begin(); it != _specializationInfos.end(); ++it)
+    {
+        output.writeValue<uint32_t>("specializationStageType", it->first);
+
+        const SpecializationInfo& specialInfo = it->second;
+
+        output.writeValue<uint32_t>("NumSpecializationEntries", specialInfo.entries.size());
+        for (auto& entry : specialInfo.entries)
+        {
+            output.write("constantID", entry.constantID);
+            output.write("offset", entry.offset);
+            output.writeValue<uint32_t>("size", entry.size);
+        }
+
+        output.writeObject("SpecializationData", specialInfo.data);
     }
 }
 
@@ -231,6 +270,18 @@ void ShaderStages::compile(Context& context)
         stageInfo.stage = sm->stage();
         stageInfo.module = *sm;
         stageInfo.pName = sm->entryPointName().c_str();
+
+        // do we have any specializations for this stage
+        if (_specializationInfos.find(sm->stage()) != _specializationInfos.end())
+        {
+            VkSpecializationInfo specializeInfo;
+            specializeInfo.mapEntryCount = static_cast<uint32_t>(_specializationInfos[sm->stage()].entries.size());
+            specializeInfo.pMapEntries = _specializationInfos[sm->stage()].entries.data();
+            specializeInfo.dataSize = _specializationInfos[sm->stage()].data->dataSize();
+            specializeInfo.pData = _specializationInfos[sm->stage()].data->dataPointer();
+
+            stageInfo.pSpecializationInfo = &specializeInfo;
+        }
     }
 }
 
