@@ -274,7 +274,7 @@ void ShaderStages::compile(Context& context)
         // do we have any specializations for this stage
         if (_specializationInfos.find(sm->stage()) != _specializationInfos.end())
         {
-            VkSpecializationInfo specializeInfo;
+            auto& specializeInfo = _specializationInfos[sm->stage()].implementation;
             specializeInfo.mapEntryCount = static_cast<uint32_t>(_specializationInfos[sm->stage()].entries.size());
             specializeInfo.pMapEntries = _specializationInfos[sm->stage()].entries.data();
             specializeInfo.dataSize = _specializationInfos[sm->stage()].data->dataSize();

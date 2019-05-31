@@ -350,7 +350,15 @@ public:
         {
             descriptors.insert(&descriptor);
         }
-        ++descriptorTypeMap[descriptor._descriptorType];
+        if (typeid(descriptor) == typeid(vsg::TextureArray))
+        {
+            const vsg::TextureArray* textureArray = static_cast<const vsg::TextureArray*>(&descriptor);
+            descriptorTypeMap[descriptor._descriptorType] += static_cast<uint32_t>(textureArray->_textures.size());
+        }
+        else
+        {
+            ++descriptorTypeMap[descriptor._descriptorType];
+        }
     }
 
     uint32_t computeNumDescriptorSets() const

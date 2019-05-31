@@ -139,6 +139,7 @@ namespace vsg
         {
             SpecializationEntries entries;
             ref_ptr<Data> data;
+            VkSpecializationInfo implementation;
         };
         using StageSpecializationInfos = std::map<VkShaderStageFlagBits, SpecializationInfo>;
 

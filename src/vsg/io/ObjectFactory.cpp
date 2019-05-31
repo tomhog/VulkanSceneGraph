@@ -188,6 +188,7 @@ ObjectFactory::ObjectFactory()
     VSG_REGISTER_create(vsg::DescriptorSet);
     VSG_REGISTER_create(vsg::DescriptorSetLayout);
     VSG_REGISTER_create(vsg::Texture);
+    VSG_REGISTER_create(vsg::TextureArray);
     VSG_REGISTER_create(vsg::Uniform);
 }
 

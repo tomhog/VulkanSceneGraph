@@ -128,6 +128,64 @@ bool Texture::assignTo(VkWriteDescriptorSet& wds, VkDescriptorSet descriptorSet)
 
 /////////////////////////////////////////////////////////////////////////////////////////
 //
+// TextureArray
+//
+TextureArray::TextureArray() :
+    Inherit(0, 0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+{
+}
+
+void TextureArray::read(Input& input)
+{
+    Descriptor::read(input);
+
+    _textures.resize(input.readValue<uint32_t>("NumTextures"));
+    for (auto& texture : _textures)
+    {
+        texture = input.readObject<Texture>("Texture");
+    }
+}
+
+void TextureArray::write(Output& output) const
+{
+    Descriptor::write(output);
+
+    output.writeValue<uint32_t>("NumTextures", _textures.size());
+    for (auto& texture : _textures)
+    {
+        output.writeObject("Texture", texture.get());
+    }
+}
+
+void TextureArray::compile(Context& context)
+{
+    if (_implementation) return;
+
+    vsg::ImageDataList images;
+    for (const auto& texture : _textures)
+    {
+        ref_ptr<Sampler> sampler = Sampler::create(context.device, texture->_samplerInfo, nullptr);
+        vsg::ImageData imageData = vsg::transferImageData(context, texture->_textureData, sampler);
+        if (!imageData.valid())
+        {
+            return;
+        }
+        images.push_back(imageData);
+    }
+
+    _implementation = vsg::DescriptorImage::create(_dstBinding, _dstArrayElement, _descriptorType, images);
+}
+
+bool TextureArray::assignTo(VkWriteDescriptorSet& wds, VkDescriptorSet descriptorSet) const
+{
+    if (_implementation)
+        return _implementation->assignTo(wds, descriptorSet);
+    else
+        return false;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////
+//
 // Uniform
 //
 Uniform::Uniform() :

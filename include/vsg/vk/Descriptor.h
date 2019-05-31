@@ -188,7 +188,27 @@ namespace vsg
     };
     VSG_type_name(vsg::Texture)
 
-        class VSG_DECLSPEC Uniform : public Inherit<Descriptor, Uniform>
+    class VSG_DECLSPEC TextureArray : public Inherit<Descriptor, TextureArray>
+    {
+    public:
+        TextureArray();
+
+        void read(Input& input) override;
+        void write(Output& output) const override;
+
+        void compile(Context& context) override;
+
+        bool assignTo(VkWriteDescriptorSet& wds, VkDescriptorSet descriptorSet) const override;
+
+        // settings
+        using Textures = std::vector<ref_ptr<Texture>>;
+        Textures _textures;
+
+        ref_ptr<vsg::Descriptor> _implementation;
+    };
+    VSG_type_name(vsg::TextureArray)
+
+    class VSG_DECLSPEC Uniform : public Inherit<Descriptor, Uniform>
     {
     public:
         Uniform();
