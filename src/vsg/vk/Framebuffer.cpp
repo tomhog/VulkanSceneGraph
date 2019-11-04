@@ -24,6 +24,8 @@ Framebuffer::Framebuffer(VkFramebuffer framebuffer, const std::vector<ref_ptr<Im
 
 Framebuffer::~Framebuffer()
 {
+    _attachments.clear();
+
     if (_framebuffer)
     {
         vkDestroyFramebuffer(*_device, _framebuffer, _allocator);
