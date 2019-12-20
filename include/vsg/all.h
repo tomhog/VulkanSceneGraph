@@ -82,8 +82,13 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 // Viewer header files
 #include <vsg/viewer/Camera.h>
 #include <vsg/viewer/CloseHandler.h>
+#include <vsg/viewer/CopyImageViewToWindow.h>
+#include <vsg/viewer/CommandGraph.h>
 #include <vsg/viewer/GraphicsStage.h>
+#include <vsg/viewer/Presentation.h>
 #include <vsg/viewer/ProjectionMatrix.h>
+#include <vsg/viewer/RecordAndSubmitTask.h>
+#include <vsg/viewer/RenderGraph.h>
 #include <vsg/viewer/Trackball.h>
 #include <vsg/viewer/View.h>
 #include <vsg/viewer/ViewMatrix.h>
@@ -102,6 +107,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 #include <vsg/vk/CommandPool.h>
 #include <vsg/vk/ComputePipeline.h>
 #include <vsg/vk/Context.h>
+#include <vsg/vk/CopyImage.h>
 #include <vsg/vk/Descriptor.h>
 #include <vsg/vk/DescriptorBuffer.h>
 #include <vsg/vk/DescriptorImage.h>
@@ -123,6 +129,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 #include <vsg/vk/Instance.h>
 #include <vsg/vk/MemoryManager.h>
 #include <vsg/vk/PhysicalDevice.h>
+#include <vsg/vk/PipelineBarrier.h>
 #include <vsg/vk/PipelineLayout.h>
 #include <vsg/vk/PushConstants.h>
 #include <vsg/vk/Queue.h>
@@ -134,6 +141,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 #include <vsg/vk/ShaderStage.h>
 #include <vsg/vk/Stage.h>
 #include <vsg/vk/State.h>
+#include <vsg/vk/SubmitCommands.h>
 #include <vsg/vk/Surface.h>
 #include <vsg/vk/Swapchain.h>
 
@@ -168,6 +176,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 #include <vsg/raytracing/BottomLevelAccelerationStructure.h>
 #include <vsg/raytracing/DescriptorAccelerationStructure.h>
 #include <vsg/raytracing/RayTracingPipeline.h>
-#include <vsg/raytracing/RayTracingShaderBindings.h>
+#include <vsg/raytracing/RayTracingShaderGroup.h>
 #include <vsg/raytracing/RayTracingStage.h>
 #include <vsg/raytracing/TopLevelAccelerationStructure.h>
+#include <vsg/raytracing/TraceRays.h>

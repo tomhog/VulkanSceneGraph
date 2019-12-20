@@ -69,6 +69,7 @@ set(SOURCES
     viewer/Viewer.cpp
     viewer/Window.cpp
     viewer/Trackball.cpp
+    viewer/CopyImageViewToWindow.cpp
 
     raytracing/AccelerationGeometry.cpp
     raytracing/AccelerationStructure.cpp
@@ -78,7 +79,13 @@ set(SOURCES
     raytracing/AccelerationStructureBuildTraversal.cpp
     raytracing/RayTracingStage.cpp
     raytracing/RayTracingPipeline.cpp
-    raytracing/RayTracingShaderBindings.cpp
+    raytracing/RayTracingShaderGroup.cpp
+    raytracing/TraceRays.cpp
+
+    viewer/CommandGraph.cpp
+    viewer/RenderGraph.cpp
+    viewer/Presentation.cpp
+    viewer/RecordAndSubmitTask.cpp
 
     vk/Buffer.cpp
     vk/BufferData.cpp
@@ -90,6 +97,7 @@ set(SOURCES
     vk/CommandPool.cpp
     vk/ComputePipeline.cpp
     vk/Context.cpp
+    vk/CopyImage.cpp
     vk/Descriptor.cpp
     vk/DescriptorBuffer.cpp
     vk/DescriptorImage.cpp
@@ -111,6 +119,7 @@ set(SOURCES
     vk/MemoryManager.cpp
     vk/PhysicalDevice.cpp
     vk/PipelineLayout.cpp
+    vk/PipelineBarrier.cpp
     vk/PushConstants.cpp
     vk/Queue.cpp
     vk/RenderPass.cpp

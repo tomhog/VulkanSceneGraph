@@ -13,6 +13,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 #include <vsg/traversals/CompileTraversal.h>
 #include <vsg/vk/CommandBuffer.h>
 #include <vsg/vk/DescriptorImage.h>
+#include <vsg/vk/PipelineBarrier.h>
 
 #include <algorithm>
 #include <iostream>
@@ -31,13 +32,19 @@ DescriptorImage::DescriptorImage() :
 DescriptorImage::DescriptorImage(ref_ptr<Sampler> sampler, ref_ptr<Data> image, uint32_t dstBinding, uint32_t dstArrayElement, VkDescriptorType descriptorType) :
     Inherit(dstBinding, dstArrayElement, descriptorType)
 {
-    if (sampler || image) _samplerImages.emplace_back(SamplerImage(sampler, image));
+    if (sampler || image) _samplerImages.emplace_back(SamplerImage{sampler, image, {}});
+}
+
+DescriptorImage::DescriptorImage(ref_ptr<Sampler> sampler, ref_ptr<ImageView> imageView, uint32_t dstBinding, uint32_t dstArrayElement, VkDescriptorType descriptorType) :
+    Inherit(dstBinding, dstArrayElement, descriptorType)
+{
+    if (sampler || imageView) _samplerImages.emplace_back(SamplerImage{sampler, {}, imageView});
 }
 
 DescriptorImage::DescriptorImage(const SamplerImage& samplerImage, uint32_t dstBinding, uint32_t dstArrayElement, VkDescriptorType descriptorType) :
     Inherit(dstBinding, dstArrayElement, descriptorType)
 {
-    if (samplerImage.first || samplerImage.second) _samplerImages.emplace_back(samplerImage);
+    if (samplerImage.sampler || samplerImage.data || samplerImage.imageView) _samplerImages.emplace_back(samplerImage);
 }
 
 DescriptorImage::DescriptorImage(const SamplerImages& samplerImages, uint32_t dstBinding, uint32_t dstArrayElement, VkDescriptorType descriptorType) :
@@ -56,8 +63,8 @@ void DescriptorImage::read(Input& input)
     _samplerImages.resize(input.readValue<uint32_t>("NumImages"));
     for (auto& samplerImage : _samplerImages)
     {
-        samplerImage.first = input.readObject<Sampler>("Sampler");
-        samplerImage.second = input.readObject<Data>("Image");
+        samplerImage.sampler = input.readObject<Sampler>("Sampler");
+        samplerImage.data = input.readObject<Data>("Image");
     }
 }
 
@@ -68,8 +75,8 @@ void DescriptorImage::write(Output& output) const
     output.writeValue<uint32_t>("NumImages", _samplerImages.size());
     for (auto& samplerImage : _samplerImages)
     {
-        output.writeObject("Sampler", samplerImage.first.get());
-        output.writeObject("Image", samplerImage.second.get());
+        output.writeObject("Sampler", samplerImage.sampler.get());
+        output.writeObject("Image", samplerImage.data.get());
     }
 }
 
@@ -84,8 +91,17 @@ void DescriptorImage::compile(Context& context)
         _imageDataList.reserve(_samplerImages.size());
         for (auto& samplerImage : _samplerImages)
         {
-            samplerImage.first->compile(context);
-            _imageDataList.emplace_back(vsg::transferImageData(context, samplerImage.second, samplerImage.first));
+            samplerImage.sampler->compile(context);
+            if (samplerImage.imageView)
+            {
+                ImageData imagedata = ImageData(samplerImage.sampler, samplerImage.imageView);
+                imagedata._imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL; //no way to set this from an image view at the moment
+                _imageDataList.emplace_back(imagedata);
+            }
+            else
+            {
+                _imageDataList.emplace_back(vsg::transferImageData(context, samplerImage.data, samplerImage.sampler));
+            }
         }
     }
 
@@ -174,7 +190,22 @@ void DescriptorImageView::compile(Context& context)
     for (size_t i = 0; i < _imageDataList.size(); ++i)
     {
         if (_imageDataList[i]._sampler) _imageDataList[i]._sampler->compile(context);
-        if (_imageDataList[i]._imageView) context.commands.emplace_back(new SetImageLayoutCommand(_imageDataList[i]));
+
+        if (_imageDataList[i]._imageView)
+        {
+            auto imb_transitionLayoutMemoryBarrier = ImageMemoryBarrier::create(
+                0, VK_ACCESS_SHADER_READ_BIT,
+                VK_IMAGE_LAYOUT_UNDEFINED, _imageDataList[i]._imageLayout,
+                VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED,
+                ref_ptr<Image>(_imageDataList[i]._imageView->getImage()),
+                VkImageSubresourceRange{VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1});
+
+            auto pb_transitionLayoutMemoryBarrier = PipelineBarrier::create(
+                VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                0, imb_transitionLayoutMemoryBarrier);
+
+            context.commands.emplace_back(pb_transitionLayoutMemoryBarrier);
+        }
 
         const ImageData& data = _imageDataList[i];
         VkDescriptorImageInfo& info = _imageInfos[i];

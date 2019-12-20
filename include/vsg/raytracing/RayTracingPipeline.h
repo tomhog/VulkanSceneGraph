@@ -12,10 +12,10 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 </editor-fold> */
 
+#include <vsg/raytracing/RayTracingShaderGroup.h>
 #include <vsg/vk/Command.h>
 #include <vsg/vk/PipelineLayout.h>
 #include <vsg/vk/ShaderStage.h>
-#include <vsg/raytracing/RayTracingShaderBindings.h>
 
 namespace vsg
 {
@@ -24,7 +24,7 @@ namespace vsg
     public:
         RayTracingPipeline();
 
-        RayTracingPipeline(PipelineLayout* pipelineLayout, const ShaderStages& shaderStages, RayTracingShaderBindings* shaderBindings, AllocationCallbacks* allocator = nullptr);
+        RayTracingPipeline(PipelineLayout* pipelineLayout, const ShaderStages& shaderStages, const RayTracingShaderGroups& shaderGroups, AllocationCallbacks* allocator = nullptr);
 
         void read(Input& input) override;
         void write(Output& output) const override;
@@ -35,16 +35,25 @@ namespace vsg
         ShaderStages& getShaderStages() { return _shaderStages; }
         const ShaderStages& getShaderStages() const { return _shaderStages; }
 
+        RayTracingShaderGroups& getRayTracingShaderGroups() { return _rayTracingShaderGroups; }
+        const RayTracingShaderGroups& getRayTracingShaderGroups() const { return _rayTracingShaderGroups; }
+
+        AllocationCallbacks* getAllocationCallbacks() { return _allocator; }
+        const AllocationCallbacks* getAllocationCallbacks() const { return _allocator; }
+
+        uint32_t& maxRecursionDepth() { return _maxRecursionDepth; }
+        const uint32_t& maxRecursionDepth() const { return _maxRecursionDepth; }
+
         class VSG_DECLSPEC Implementation : public Inherit<Object, Implementation>
         {
         public:
-            Implementation(VkPipeline pipeline, Device* device, PipelineLayout* pipelineLayout, const ShaderStages& shaderStages, RayTracingShaderBindings* shaderBindings, AllocationCallbacks* allocator = nullptr);
+            Implementation(VkPipeline pipeline, Device* device, RayTracingPipeline* rayTracingPipeline, AllocationCallbacks* allocator = nullptr);
             virtual ~Implementation();
 
             using Result = vsg::Result<Implementation, VkResult, VK_SUCCESS>;
 
             /** Create a GraphicsPipeline.*/
-            static Result create(Device* device, PipelineLayout* pipelineLayout, const ShaderStages& shaderStages, RayTracingShaderBindings* shaderBindings, AllocationCallbacks* allocator = nullptr);
+            static Result create(Context& context, RayTracingPipeline* rayTracingPipeline);
 
             VkPipeline _pipeline;
 
@@ -52,7 +61,7 @@ namespace vsg
             ref_ptr<Device> _device;
             ref_ptr<PipelineLayout> _pipelineLayout;
             ShaderStages _shaderStages;
-            ref_ptr<RayTracingShaderBindings> _shaderBindings;
+            RayTracingShaderGroups _shaderGroups;
             ref_ptr<AllocationCallbacks> _allocator;
         };
 
@@ -74,7 +83,9 @@ namespace vsg
         ref_ptr<Device> _device;
         ref_ptr<PipelineLayout> _pipelineLayout;
         ShaderStages _shaderStages;
-        ref_ptr<RayTracingShaderBindings> _shaderBindings;
+        RayTracingShaderGroups _rayTracingShaderGroups;
+        uint32_t _maxRecursionDepth = 1;
+
         ref_ptr<AllocationCallbacks> _allocator;
 
         ref_ptr<Implementation> _implementation;
@@ -105,6 +116,6 @@ namespace vsg
 
         ref_ptr<RayTracingPipeline> _pipeline;
     };
-    VSG_type_name(vsg::BindRayTracingPipeline);   
+    VSG_type_name(vsg::BindRayTracingPipeline);
 
 } // namespace vsg

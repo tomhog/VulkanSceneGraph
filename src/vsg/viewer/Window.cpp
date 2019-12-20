@@ -12,6 +12,8 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 #include <vsg/ui/ApplicationEvent.h>
 #include <vsg/viewer/Window.h>
+#include <vsg/vk/PipelineBarrier.h>
+#include <vsg/vk/SubmitCommands.h>
 
 #include <array>
 #include <chrono>
@@ -108,11 +110,6 @@ void Window::initaliseDevice()
 
 void Window::buildSwapchain(uint32_t width, uint32_t height)
 {
-    if (!_imageAvailableSemaphore)
-    {
-        _imageAvailableSemaphore = vsg::Semaphore::create(_device);
-    }
-
     if (_swapchain)
     {
         // make sure all operations on the device have stopped before we go deleting associated resources
@@ -167,7 +164,6 @@ void Window::buildSwapchain(uint32_t width, uint32_t height)
     for (size_t i = 0; i < imageViews.size(); ++i)
     {
         std::array<VkImageView, 2> attachments = {{*imageViews[i], *_depthImageView}};
-        std::vector<ref_ptr<ImageView>> attachmentsviews = {{imageViews[i], _depthImageView}};
 
         VkFramebufferCreateInfo framebufferInfo = {};
         framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
@@ -179,7 +175,7 @@ void Window::buildSwapchain(uint32_t width, uint32_t height)
         framebufferInfo.layers = 1;
 
         ref_ptr<Semaphore> ias = vsg::Semaphore::create(_device);
-        ref_ptr<Framebuffer> fb = Framebuffer::create(_device, framebufferInfo, attachmentsviews);
+        ref_ptr<Framebuffer> fb = Framebuffer::create(_device, framebufferInfo);
         ref_ptr<CommandPool> cp = CommandPool::create(_device, _physicalDevice->getGraphicsFamily());
 #if 0
         ref_ptr<CommandBuffer> cb = CommandBuffer::create(_device, cp, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
@@ -191,16 +187,19 @@ void Window::buildSwapchain(uint32_t width, uint32_t height)
         _frames.push_back({ias, imageViews[i], fb, cp, cb, false, fence});
     }
 
-    dispatchCommandsToQueue(_device, _frames[0].commandPool, _device->getQueue(_physicalDevice->getGraphicsFamily()), [&](VkCommandBuffer commandBuffer) {
-        vsg::ImageMemoryBarrier depthImageMemoryBarrier(
+    submitCommandsToQueue(_device, _frames[0].commandPool, _device->getQueue(_physicalDevice->getGraphicsFamily()), [&](CommandBuffer& commandBuffer) {
+        auto depthImageBarrier = ImageMemoryBarrier::create(
             0, VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
             VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-            _depthImage);
+            VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED,
+            _depthImage,
+            VkImageSubresourceRange{VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT, 0, 1, 0, 1});
 
-        depthImageMemoryBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+        auto pipelineBarrier = PipelineBarrier::create(
+            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
+            0, depthImageBarrier);
 
-        depthImageMemoryBarrier.cmdPiplineBarrier(commandBuffer,
-                                                  VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT);
+        pipelineBarrier->dispatch(commandBuffer);
     });
 
     _nextImageIndex = 0;
@@ -237,7 +236,7 @@ void Window::populateCommandBuffers(uint32_t index, ref_ptr<vsg::FrameStamp> fra
 
     for (auto& stage : _stages)
     {
-        stage->populateCommandBuffer(frame.commandBuffer, frame.framebuffer, _renderPass, _extent2D, _clearColor, frameStamp);
+        stage->populateCommandBuffer(frame.commandBuffer, frame.framebuffer, _renderPass, frame.imageView, _extent2D, _clearColor, frameStamp);
     }
 }
 

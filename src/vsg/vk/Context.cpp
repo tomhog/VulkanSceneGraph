@@ -21,9 +21,10 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 #include <vsg/vk/Command.h>
 #include <vsg/vk/CommandBuffer.h>
+#include <vsg/vk/Extensions.h>
+#include <vsg/vk/PipelineBarrier.h>
 #include <vsg/vk/RenderPass.h>
 #include <vsg/vk/State.h>
-#include <vsg/vk/Extensions.h>
 
 #include <iostream>
 
@@ -496,13 +497,19 @@ void CopyAndReleaseImageDataCommand::dispatch(CommandBuffer& commandBuffer) cons
     }
     else
     {
-        // no mip maps required so just copy image without any extra processing.
-        ImageMemoryBarrier preCopyImageMemoryBarrier(
+
+        auto preCopyImageMemoryBarrier = ImageMemoryBarrier::create(
             0, VK_ACCESS_TRANSFER_WRITE_BIT,
             VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-            textureImage);
+            VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED,
+            textureImage,
+            VkImageSubresourceRange{VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1});
 
-        preCopyImageMemoryBarrier.cmdPiplineBarrier(commandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+        auto preCopyPipelineBarrier = PipelineBarrier::create(
+            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+            0, preCopyImageMemoryBarrier);
+
+        preCopyPipelineBarrier->dispatch(commandBuffer);
 
         VkBufferImageCopy region = {};
         region.bufferOffset = source._offset;
@@ -517,52 +524,19 @@ void CopyAndReleaseImageDataCommand::dispatch(CommandBuffer& commandBuffer) cons
 
         vkCmdCopyBufferToImage(commandBuffer, *imageStagingBuffer, *textureImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 
-        ImageMemoryBarrier postCopyImageMemoryBarrier(
+        auto postCopyImageBarrier = ImageMemoryBarrier::create(
             VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
             VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, targetImageLayout,
-            textureImage);
+            VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED,
+            textureImage,
+            VkImageSubresourceRange{VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1});
 
-        postCopyImageMemoryBarrier.cmdPiplineBarrier(commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+        auto postPipelineBarrier = PipelineBarrier::create(
+            VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+            0, postCopyImageBarrier);
+
+        postPipelineBarrier->dispatch(commandBuffer);
     }
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////
-//
-// vsg::SetImageLayoutCommand
-//
-
-SetImageLayoutCommand::SetImageLayoutCommand(Image* image, VkAccessFlags srcAccessMask, VkAccessFlags destAccessMask, VkImageLayout oldLayout, VkImageLayout newLayout, VkPipelineStageFlags srcStage, VkPipelineStageFlags destStage) :
-    Command(),
-    _image(image),
-    _srcAccessMask(srcAccessMask),
-    _destAccessMask(destAccessMask),
-    _oldLayout(oldLayout),
-    _newLayout(newLayout),
-    _srcStage(srcStage),
-    _destStage(destStage)
-{
-}
-
-SetImageLayoutCommand::SetImageLayoutCommand(ImageData image) :
-    Command(),
-    _image(image._imageView->getImage()),
-    _srcAccessMask(0),
-    _destAccessMask(VK_ACCESS_SHADER_READ_BIT),
-    _oldLayout(VK_IMAGE_LAYOUT_UNDEFINED),
-    _newLayout(image._imageLayout),
-    _srcStage(VK_PIPELINE_STAGE_TRANSFER_BIT),
-    _destStage(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT)
-{
-}
-
-void SetImageLayoutCommand::dispatch(CommandBuffer& commandBuffer) const
-{
-    ImageMemoryBarrier transitionLayoutMemoryBarrier(
-        _srcAccessMask, _destAccessMask,
-        _oldLayout, _newLayout,
-        _image);
-
-    transitionLayoutMemoryBarrier.cmdPiplineBarrier(commandBuffer, _srcStage, _destStage);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
@@ -584,14 +558,14 @@ void BuildAccelerationStructureCommand::dispatch(CommandBuffer& commandBuffer) c
     Extensions* extensions = Extensions::Get(_device, true);
 
     extensions->vkCmdBuildAccelerationStructureNV(commandBuffer,
-                                                    _accelerationStructureInfo,
-                                                    _instanceBuffer.valid() ? *_instanceBuffer : (VkBuffer)VK_NULL_HANDLE,
-                                                    0,
-                                                    VK_FALSE,
-                                                    _accelerationStructure,
-                                                    VK_NULL_HANDLE,
-                                                    *_scratchBuffer,
-                                                    0);
+                                                  _accelerationStructureInfo,
+                                                  _instanceBuffer.valid() ? *_instanceBuffer : (VkBuffer)VK_NULL_HANDLE,
+                                                  0,
+                                                  VK_FALSE,
+                                                  _accelerationStructure,
+                                                  VK_NULL_HANDLE,
+                                                  *_scratchBuffer,
+                                                  0);
 
     VkMemoryBarrier memoryBarrier;
     memoryBarrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;

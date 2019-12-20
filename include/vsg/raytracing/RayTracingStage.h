@@ -13,7 +13,6 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 </editor-fold> */
 
 #include <vsg/vk/Stage.h>
-#include <vsg/raytracing/RayTracingShaderBindings.h>
 
 #include <vsg/viewer/Camera.h>
 
@@ -23,11 +22,10 @@ namespace vsg
     class VSG_DECLSPEC RayTracingStage : public Inherit<Stage, RayTracingStage>
     {
     public:
-        RayTracingStage(ref_ptr<Node> commandGraph, ref_ptr<RayTracingShaderBindings> shaderBindings, ImageView* storageImage, const VkExtent2D& extents, ref_ptr<Camera> camera = ref_ptr<Camera>());
+        RayTracingStage(ref_ptr<Node> commandGraph, ImageView* storageImage, const VkExtent2D& extents, ref_ptr<Camera> camera = ref_ptr<Camera>());
 
         ref_ptr<Camera> _camera;
         ref_ptr<Node> _commandGraph;
-        ref_ptr<RayTracingShaderBindings> _shaderBindings;
         vsg::ref_ptr<vsg::mat4Value> _projMatrix;
         vsg::ref_ptr<vsg::mat4Value> _viewMatrix;
         vsg::ref_ptr<ViewportState> _viewport;
@@ -37,7 +35,7 @@ namespace vsg
         VkExtent2D _extent2D;
         uint32_t _maxSlot = 2;
 
-        void populateCommandBuffer(CommandBuffer* commandBuffer, Framebuffer* framebuffer, RenderPass* renderPass, const VkExtent2D& extent, const VkClearColorValue& clearColor, ref_ptr<FrameStamp> frameStamp) override;
+        void populateCommandBuffer(CommandBuffer* commandBuffer, Framebuffer* framebuffer, RenderPass* renderPass, ImageView* imageView, const VkExtent2D& extent, const VkClearColorValue& clearColor, ref_ptr<FrameStamp> frameStamp) override;
     };
 
 } // namespace vsg
