@@ -78,7 +78,7 @@ void DescriptorBuffer::compile(Context& context)
 
     if (_bufferDataList.size() < _dataList.size())
     {
-        VkBufferUsageFlags bufferUsageFlags = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+        VkBufferUsageFlags bufferUsageFlags = _descriptorType == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER ? VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT : VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
 #if 1
         _bufferDataList = vsg::createHostVisibleBuffer(context.device, _dataList, bufferUsageFlags, VK_SHARING_MODE_EXCLUSIVE);
         vsg::copyDataListToBuffers(_bufferDataList);

@@ -23,8 +23,6 @@ Framebuffer::Framebuffer(VkFramebuffer framebuffer, Device* device, AllocationCa
 
 Framebuffer::~Framebuffer()
 {
-    _attachments.clear();
-
     if (_framebuffer)
     {
         vkDestroyFramebuffer(*_device, _framebuffer, _allocator);

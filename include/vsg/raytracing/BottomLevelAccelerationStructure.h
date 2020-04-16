@@ -29,6 +29,9 @@ namespace vsg
 
         // compiled data
         std::vector<VkGeometryNV> _vkGeometries;
+
+        // id associated with this BLAS
+        uint32_t _instanceId;
     };
 
 } // namespace vsg

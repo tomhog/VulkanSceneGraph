@@ -13,9 +13,11 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 </editor-fold> */
 
 #include <vsg/vk/State.h>
+#include <vsg/vk/DescriptorBuffer.h>
 
 #include <vsg/core/Object.h>
 #include <vsg/core/Visitor.h>
+#include <vsg/core/Array.h>
 
 #include <vsg/nodes/Geometry.h>
 #include <vsg/nodes/MatrixTransform.h>
@@ -27,7 +29,12 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 namespace vsg
 {
-    //class MatrixStack;
+    struct MeshAttribute
+    {
+        vsg::vec3 normal;
+        vsg::vec2 tex0;
+    };
+    VSG_array(MeshAttributeArray, MeshAttribute);
 
     class VSG_DECLSPEC AccelerationStructureBuildTraversal : public Visitor
     {
@@ -42,12 +49,26 @@ namespace vsg
         // the top level acceleration structure we are creating and adding geometry instances to as we find and create them
         ref_ptr<TopLevelAccelerationStructure> _tlas;
 
+        void createMeshBufferDescriptors(uint32_t attributeIndex = 0, uint32_t facesIndex = 1, uint32_t matIdsIndex = 2);
+
+        ref_ptr<DescriptorBuffer> _meshAttributesDescriptor;
+        ref_ptr<DescriptorBuffer> _facesDescriptor;
+        ref_ptr<DescriptorBuffer> _matIdsDescriptor;
+
         ref_ptr<Device> _device;
 
     protected:
         void createGeometryInstance(BottomLevelAccelerationStructure* blas);
 
+        void addMeshBufferData(Data* indicies, const DataList& arrays);
+
         MatrixStack _transformStack;
+
+        uint32_t _nextInstanceID;
+
+        DataList _meshAttributes; // MeshAttributeArray per mesh
+        DataList _faces;          // uivec4Array per mesh
+        DataList _matIds;         // uintArray per mesh
 
         // cache blas's created for various types of draw node
         std::map<VertexIndexDraw*, ref_ptr<BottomLevelAccelerationStructure>> _vertexIndexDrawBlasMap;
